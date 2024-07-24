@@ -1,6 +1,9 @@
 image_path: "/"
 json_path: "/"
 
+
+model_name: shoe-cap
+
 task: captioning
 pretrained_model: Salesforce/blip2-opt-2.7b
 wandb_name: captioning_project

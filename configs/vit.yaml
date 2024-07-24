@@ -1,6 +1,9 @@
 image_path: "/"
 json_path: "/"
 
+
+model_name: shoe45k
+
 task: classification
 pretrained_model: bert-base-uncased
 wandb_name: classification_project
@@ -26,7 +29,7 @@ training_args:
   logging_steps: 10
   load_best_model_at_end: true
   metric_for_best_model: accuracy
-  push_to_hub: false
+  push_to_hub: True
   label_names:
     - labels
   report_to: wandb
