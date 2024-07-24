@@ -1,0 +1,33 @@
+image_path: "/"
+json_path: "/"
+
+task: classification
+pretrained_model: bert-base-uncased
+wandb_name: classification_project
+num_classes: 6
+lora_r: 16
+lora_alpha: 16
+lora_target_modules:
+  - query
+  - value
+lora_dropout: 0.0
+lora_bias: none
+training_args:
+  output_dir: ./classification_project
+  remove_unused_columns: false
+  evaluation_strategy: epoch
+  save_strategy: epoch
+  learning_rate: 5e-3
+  per_device_train_batch_size: 32
+  per_device_eval_batch_size: 32
+  gradient_accumulation_steps: 4
+  fp16: true
+  num_train_epochs: 2
+  logging_steps: 10
+  load_best_model_at_end: true
+  metric_for_best_model: accuracy
+  push_to_hub: false
+  label_names:
+    - labels
+  report_to: wandb
+  run_name: classification_project
