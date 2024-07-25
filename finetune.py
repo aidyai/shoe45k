@@ -5,14 +5,14 @@ from transformers import (
     TrainingArguments, 
     Trainer, 
     AutoModelForImageClassification, 
-    AutoProcessor,
-    AutoModelForSeq2SeqLM,
-    DataCollatorForLanguageModeling,
+    AutoImageProcessor,
+    AutoProcessor, 
+    BlipForConditionalGeneration,
     AdamW
 )
 from peft import LoraConfig, get_peft_model
 from dataset import Shoe45kDataset, BlipDataset
-from util import load_config, collate_fn_classification, blip_collate_fn, compute_metrics_classification
+from util import load_config, collate_fn_cls, blip_collate_fn, compute_metrics_cls
 
 
 def train(config: Dict):
@@ -33,15 +33,15 @@ def train(config: Dict):
         train = load_dataset(config["dataset_name"], split='train')
         val = load_dataset(config["dataset_name"], split='validation')
 
-        # Create the custom dataset
-        train_dataset_cls = Shoe45kDataset(train, processor)
-        val_dataset_cls = Shoe45kDataset(val, processor)
-
         model = AutoModelForImageClassification.from_pretrained(
             pretrained_model_name_or_path=model_checkpoint,
             num_labels=num_classes,
         )
         cls_processor = AutoImageProcessor.from_pretrained(model_checkpoint)
+
+        # Create the custom dataset
+        train_dataset_cls = Shoe45kDataset(train, cls_processor)
+        val_dataset_cls = Shoe45kDataset(val, cls_processor)
 
         lora_config = LoraConfig(
             r=lora_r,
@@ -115,6 +115,6 @@ def train(config: Dict):
 
 
 if __name__ == "__main__":
-    config_path = "vit.yaml"  # Change to your desired config file
+    config_path = "/content/shoe45k/configs/vit.yaml"  # Change to your desired config file
     config = load_config(config_path)
     train(config)

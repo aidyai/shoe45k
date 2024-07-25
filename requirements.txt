@@ -1,2 +1,4 @@
 ruamel.yaml
 wandb
+peft
+datasets
