@@ -11,9 +11,8 @@ from transformers import (
     AdamW
 )
 from peft import LoraConfig, get_peft_model
-from dataset import Shoe40kDataset, BlipDataset
+from dataset import Shoe45kDataset, BlipDataset
 from util import load_config, collate_fn_classification, blip_collate_fn, compute_metrics_classification
-from sklearn.model_selection import train_test_split
 
 
 def train(config: Dict):
@@ -30,15 +29,13 @@ def train(config: Dict):
 
     if task == "classification":
 
-        csv_path = config["csv_path"]
-        dataset_path = config["dataset_path"]
-        
-        df = pd.read_csv(csv_path)
-        df['Label'] = df['Label'].apply(lambda x: x[0:4]).astype('category').cat.codes
+        # Load the dataset
+        train = load_dataset(config["dataset_name"], split='train')
+        val = load_dataset(config["dataset_name"], split='validation')
 
-        train_df, val_df = train_test_split(df, test_size=0.2, stratify=df['Label'], random_state=42)
-        train_dataset = Shoe40kDataset(df=train_df, path=dataset_path, phase='train')
-        val_dataset = Shoe40kDataset(df=val_df, path=dataset_path, phase='val')
+        # Create the custom dataset
+        train_dataset_cls = Shoe45kDataset(train, processor)
+        val_dataset_cls = Shoe45kDataset(val, processor)
 
         model = AutoModelForImageClassification.from_pretrained(
             pretrained_model_name_or_path=model_checkpoint,
@@ -61,6 +58,13 @@ def train(config: Dict):
 
         model = BlipForConditionalGeneration.from_pretrained(model_checkpoint)
         processor = AutoProcessor.from_pretrained(model_checkpoint)
+
+        # Load the dataset
+        hf_dataset = load_dataset(config["dataset_name"], split='train')
+
+        # Create the custom dataset
+        train_dataset_blip = BlipDataset(hf_dataset, processor)
+
         lora_config = LoraConfig(
             r=lora_r,
             lora_alpha=lora_alpha,
@@ -99,8 +103,8 @@ def train(config: Dict):
     trainer = Trainer(
         model=lora_model,
         args=training_args,
-        train_dataset=train_dataset_vit if task == "classification" else train_dataset_blip,
-        eval_dataset=val_dataset_vit if task == "classification" else train_dataset_blip,
+        train_dataset=train_dataset_cls if task == "classification" else train_dataset_blip,
+        eval_dataset=val_dataset_cls if task == "classification" else None,
         tokenizer=cls_processor if task == "classification" else processor,
         compute_metrics=compute_metrics if task == "classification" else None,
         data_collator=data_collator_cls if task == "classification" else data_collator,

@@ -5,7 +5,9 @@ from torch.utils.data import Dataset
 
 from torchvision import transforms
 
-class Shoe40kTransforms:
+
+
+class Shoe45kTransforms:
     def __init__(self, phase):
         if phase == 'train':
             self.transform = transforms.Compose([
@@ -25,28 +27,46 @@ class Shoe40kTransforms:
     def __call__(self, img):
         return self.transform(img)
 
-class Shoe40kDataset(Dataset):
-    def __init__(self, df, path, phase):
-        self.df = df
-        self.path = path
-        self.file_names = df['file_name'].values
-        self.labels = df['Label'].values
-        self.phase = phase
-        self.transform = Shoe40kTransforms(phase=phase)
+class Shoe45kDataset(Dataset):
+    def __init__(self, hf_dataset, phase):
+        self.dataset = hf_dataset
+        self.transform = Shoe45kTransforms(phase)
 
     def __len__(self):
-        return len(self.df)
+        return len(self.dataset)
 
     def __getitem__(self, idx):
-        file_name = self.file_names[idx]
-        file_path = os.path.join(self.path, file_name)
-        
-        with Image.open(file_path) as image:
-            image = image.convert('RGB')
-        
-        image = self.transform(image)     
-        label = torch.tensor(self.labels[idx]).long()
+        item = self.dataset[idx]
+        image_path = item['image']['path']
+        label = item['label']
 
-        return {"pixel_values": image, "label": label}
+        # Load the image
+        image = Image.open(image_path).convert('RGB')
+
+        # Apply transforms
+        image = self.transform(image)
+
+        return image, label
 
 
+class BlipDataset(Dataset):
+    def __init__(self, hf_dataset, processor):
+        self.dataset = hf_dataset
+        self.processor = processor
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        item = self.dataset[idx]
+        image_path = item['image']
+        caption = item['caption']
+
+        # Load the image
+        image = PILImage.open(image_path).convert('RGB')
+
+        # Process the image and caption
+        encoding = self.processor(images=image, text=caption, padding="max_length", return_tensors="pt")
+        encoding = {k: v.squeeze() for k, v in encoding.items()}  # Remove batch dimension
+
+        return encoding

@@ -1,7 +1,8 @@
 
 model_name: shoe45k
-csv_path: 'path/to/your/csv'
-dataset_path: 'path/to/your/images'
+
+dataset_name: aidystark/shoe45k
+
 task: classification
 model_checkpoint: google/vit-base-patch16-224-in21k
 wandb_name: classification_project

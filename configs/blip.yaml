@@ -1,11 +1,10 @@
-image_path: "/"
-json_path: "/"
-
-
 model_name: shoe-cap
 
 task: captioning
 model_checkpoint: Salesforce/blip2-opt-2.7b
+
+dataset_name: aidystark/shoeBlip
+
 wandb_name: captioning_project
 lora_r: 16
 lora_alpha: 32
