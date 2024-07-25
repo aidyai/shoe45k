@@ -1,40 +1,51 @@
+import pandas as pd
 import ruamel.yaml as yaml
-from typing import List, Dict
+from typing import Dict
 from transformers import (
     TrainingArguments, 
     Trainer, 
     AutoModelForImageClassification, 
     AutoProcessor,
-    AutoModelForSeq2SeqLM
+    AutoModelForSeq2SeqLM,
+    DataCollatorForLanguageModeling,
+    AdamW
 )
 from peft import LoraConfig, get_peft_model
-from dataset import load_dataset
-import torch
-
-from util import load_config, collate_fn_cls, compute_metrics_cls
-
-
-
+from dataset import Shoe40kDataset, BlipDataset
+from util import load_config, collate_fn_classification, blip_collate_fn, compute_metrics_classification
+from sklearn.model_selection import train_test_split
 
 
 def train(config: Dict):
     task = config["task"]
-    pretrained_model = config["pretrained_model"]
+    model_checkpoint = config["model_checkpoint"]
     wandb_name = config["wandb_name"]
-    num_classes = config.get("num_classes", 6)
+    num_classes = config["num_classes"]
     lora_r = config["lora_r"]
     lora_alpha = config["lora_alpha"]
     lora_target_modules = config["lora_target_modules"]
     lora_dropout = config["lora_dropout"]
     lora_bias = config["lora_bias"]
 
-    train_ds, val_ds = load_dataset(task)
 
     if task == "classification":
+
+        csv_path = config["csv_path"]
+        dataset_path = config["dataset_path"]
+        
+        df = pd.read_csv(csv_path)
+        df['Label'] = df['Label'].apply(lambda x: x[0:4]).astype('category').cat.codes
+
+        train_df, val_df = train_test_split(df, test_size=0.2, stratify=df['Label'], random_state=42)
+        train_dataset = Shoe40kDataset(df=train_df, path=dataset_path, phase='train')
+        val_dataset = Shoe40kDataset(df=val_df, path=dataset_path, phase='val')
+
         model = AutoModelForImageClassification.from_pretrained(
-            pretrained_model_name_or_path=pretrained_model,
+            pretrained_model_name_or_path=model_checkpoint,
             num_labels=num_classes,
         )
+        cls_processor = AutoImageProcessor.from_pretrained(model_checkpoint)
+
         lora_config = LoraConfig(
             r=lora_r,
             lora_alpha=lora_alpha,
@@ -43,11 +54,13 @@ def train(config: Dict):
             bias=lora_bias,
             modules_to_save=["classifier"],
         )
-        collate_fn = collate_fn_classification
-        compute_metrics = compute_metrics_classification
+        compute_metrics = compute_metrics_cls
+        data_collator_cls = collate_fn_cls
 
     elif task == "captioning":
-        model = AutoModelForSeq2SeqLM.from_pretrained(pretrained_model, load_in_8bit=True)
+
+        model = BlipForConditionalGeneration.from_pretrained(model_checkpoint)
+        processor = AutoProcessor.from_pretrained(model_checkpoint)
         lora_config = LoraConfig(
             r=lora_r,
             lora_alpha=lora_alpha,
@@ -55,8 +68,10 @@ def train(config: Dict):
             lora_dropout=lora_dropout,
             bias=lora_bias,
         )
-        collate_fn = None
-        compute_metrics = None
+        
+        data_collator = blip_collate_fn
+
+
 
     lora_model = get_peft_model(model, lora_config)
 
@@ -80,14 +95,15 @@ def train(config: Dict):
         run_name=wandb_name,
     )
 
+
     trainer = Trainer(
         model=lora_model,
         args=training_args,
-        train_dataset=train_ds,
-        eval_dataset=val_ds,
-        tokenizer=AutoProcessor.from_pretrained(pretrained_model) if task == "classification" else None,
-        compute_metrics=compute_metrics,
-        data_collator=collate_fn
+        train_dataset=train_dataset_vit if task == "classification" else train_dataset_blip,
+        eval_dataset=val_dataset_vit if task == "classification" else train_dataset_blip,
+        tokenizer=cls_processor if task == "classification" else processor,
+        compute_metrics=compute_metrics if task == "classification" else None,
+        data_collator=data_collator_cls if task == "classification" else data_collator,
     )
 
     train_results = trainer.train()
@@ -95,6 +111,6 @@ def train(config: Dict):
 
 
 if __name__ == "__main__":
-    config_path = "config_classification.yml"  # Change to your desired config file
+    config_path = "vit.yaml"  # Change to your desired config file
     config = load_config(config_path)
     train(config)

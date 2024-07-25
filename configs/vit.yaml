@@ -1,11 +1,9 @@
-image_path: "/"
-json_path: "/"
-
 
 model_name: shoe45k
-
+csv_path: 'path/to/your/csv'
+dataset_path: 'path/to/your/images'
 task: classification
-pretrained_model: bert-base-uncased
+model_checkpoint: google/vit-base-patch16-224-in21k
 wandb_name: classification_project
 num_classes: 6
 lora_r: 16

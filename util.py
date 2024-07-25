@@ -15,7 +15,19 @@ def collate_fn_cls(examples):
     labels = torch.tensor([example["label"] for example in examples])
     return {"pixel_values": pixel_values, "labels": labels}
 
-
+def blip_collate_fn(batch):
+    # pad the input_ids and attention_mask
+    processed_batch = {}
+    for key in batch[0].keys():
+        if key != "text":
+            processed_batch[key] = torch.stack([example[key] for example in batch])
+        else:
+            text_inputs = processor.tokenizer(
+                [example["text"] for example in batch], padding=True, return_tensors="pt"
+            )
+            processed_batch["input_ids"] = text_inputs["input_ids"]
+            processed_batch["attention_mask"] = text_inputs["attention_mask"]
+    return processed_batch
 def compute_metrics_cls(pred):
     labels = pred.label_ids
     preds = pred.predictions.argmax(-1)

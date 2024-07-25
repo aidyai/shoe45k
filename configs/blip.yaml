@@ -5,7 +5,7 @@ json_path: "/"
 model_name: shoe-cap
 
 task: captioning
-pretrained_model: Salesforce/blip2-opt-2.7b
+model_checkpoint: Salesforce/blip2-opt-2.7b
 wandb_name: captioning_project
 lora_r: 16
 lora_alpha: 32
@@ -27,8 +27,7 @@ training_args:
   num_train_epochs: 2
   logging_steps: 10
   load_best_model_at_end: true
-  metric_for_best_model: accuracy
-  push_to_hub: false
+  push_to_hub: true
   label_names:
     - labels
   report_to: wandb
