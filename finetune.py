@@ -6,8 +6,8 @@ from transformers import (
     Trainer, 
     AutoModelForImageClassification, 
     AutoImageProcessor,
-    BlipProcessor, 
-    BlipForConditionalGeneration,
+    Blip2Processor, 
+    Blip2ForConditionalGeneration,
     AdamW,
 )
 
@@ -70,8 +70,12 @@ def train(config: Dict):
 
     elif task == "captioning":
 
-        processor = BlipProcessor.from_pretrained(model_checkpoint)
-        model = BlipForConditionalGeneration.from_pretrained(model_checkpoint).to("cuda")
+        processor = Blip2Processor.from_pretrained(model_checkpoint)
+        model = Blip2ForConditionalGeneration.from_pretrained(
+            model_checkpoint,
+            load_in_4bit=True, 
+            device_map="auto"            
+            )
 
         # Load the dataset
         hf_dataset = load_dataset(config["dataset_name"], split='train')
@@ -106,9 +110,8 @@ def train(config: Dict):
         num_train_epochs=config["training_args"]["num_train_epochs"],
         logging_steps=config["training_args"]["logging_steps"],
         load_best_model_at_end=config["training_args"]["load_best_model_at_end"],
-        metric_for_best_model=config["training_args"]["metric_for_best_model"],
         push_to_hub=config["training_args"]["push_to_hub"],
-        label_names=config["training_args"]["label_names"],
+        label_names=config["training_args"]["label_names"] if task == "classification" else None,
         report_to=config["training_args"]["report_to"],
         run_name=wandb_name,
     )

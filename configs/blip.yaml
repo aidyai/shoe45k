@@ -1,7 +1,7 @@
 model_name: shoe-cap
 
 task: captioning
-model_checkpoint: "Salesforce/blip-image-captioning-large"
+model_checkpoint: "Salesforce/blip2-opt-2.7b"
 
 dataset_name: aidystark/shoeBlip
 
@@ -27,7 +27,5 @@ training_args:
   logging_steps: 10
   load_best_model_at_end: true
   push_to_hub: true
-  label_names:
-    - labels
   report_to: wandb
   run_name: captioning_project
