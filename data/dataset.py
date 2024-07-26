@@ -5,7 +5,14 @@ from torch.utils.data import Dataset
 
 from torchvision import transforms
 
-
+label_mapping = {
+    "Sneakers": 0,
+    "Boot": 1,
+    "Sandals": 2,
+    'Crocs': 3, 
+    'Heels': 4, 
+    'Dressing Shoe': 5,
+}
 
 class Shoe45kTransforms:
     def __init__(self, phase):
@@ -16,7 +23,7 @@ class Shoe45kTransforms:
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
-        else:  # val or test
+        elif phase == 'val': 
             self.transform = transforms.Compose([
                 transforms.Resize(256),
                 transforms.CenterCrop(224),
@@ -26,6 +33,9 @@ class Shoe45kTransforms:
 
     def __call__(self, img):
         return self.transform(img)
+
+
+
 
 class Shoe45kDataset(Dataset):
     def __init__(self, hf_dataset, phase):
@@ -37,16 +47,17 @@ class Shoe45kDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.dataset[idx]
-        image_path = item['image']['path']
-        label = item['label']
+        image_bytes = item['image']['bytes']
+        
+        image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        
+        image = self.transforms(image)
 
-        # Load the image
-        image = Image.open(image_path).convert('RGB')
+        label = self.label_mapping[item['label']]
+        label = torch.tensor(label).long()
 
-        # Apply transforms
-        image = self.transform(image)
+        return {"pixel_values": image, "label": label}
 
-        return image, label
 
 
 class BlipDataset(Dataset):

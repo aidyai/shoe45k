@@ -11,9 +11,9 @@ from transformers import (
     AdamW
 )
 from peft import LoraConfig, get_peft_model
-from dataset import Shoe45kDataset, BlipDataset
+from data.dataset import Shoe45kDataset, BlipDataset
 from util import load_config, collate_fn_cls, blip_collate_fn, compute_metrics_cls
-
+from datasets import load_dataset
 
 def train(config: Dict):
     task = config["task"]
@@ -29,6 +29,15 @@ def train(config: Dict):
 
     if task == "classification":
 
+        label_mapping = {
+          "Sneakers": 0,
+          "Boot": 1,
+          "Sandals": 2,
+          'Crocs': 3, 
+          'Heels': 4, 
+          'Dressing Shoe': 5,
+          }
+
         # Load the dataset
         train = load_dataset(config["dataset_name"], split='train')
         val = load_dataset(config["dataset_name"], split='validation')
@@ -37,11 +46,11 @@ def train(config: Dict):
             pretrained_model_name_or_path=model_checkpoint,
             num_labels=num_classes,
         )
-        cls_processor = AutoImageProcessor.from_pretrained(model_checkpoint)
+        #cls_processor = AutoImageProcessor.from_pretrained(model_checkpoint)
 
         # Create the custom dataset
-        train_dataset_cls = Shoe45kDataset(train, cls_processor)
-        val_dataset_cls = Shoe45kDataset(val, cls_processor)
+        train_dataset_cls = Shoe45kDataset(train, phase='train', label_mapping=label_mapping)
+        val_dataset_cls = Shoe45kDataset(val, phase='val', label_mapping=label_mapping)
 
         lora_config = LoraConfig(
             r=lora_r,
@@ -105,10 +114,11 @@ def train(config: Dict):
         args=training_args,
         train_dataset=train_dataset_cls if task == "classification" else train_dataset_blip,
         eval_dataset=val_dataset_cls if task == "classification" else None,
-        tokenizer=cls_processor if task == "classification" else processor,
+        tokenizer=None if task == "classification" else processor,
         compute_metrics=compute_metrics if task == "classification" else None,
         data_collator=data_collator_cls if task == "classification" else data_collator,
-    )
+        )
+
 
     train_results = trainer.train()
     return train_results
