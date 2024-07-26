@@ -22,7 +22,6 @@ def train(config: Dict):
     task = config["task"]
     model_checkpoint = config["model_checkpoint"]
     wandb_name = config["wandb_name"]
-    num_classes = config["num_classes"]
     lora_r = config["lora_r"]
     lora_alpha = config["lora_alpha"]
     lora_target_modules = config["lora_target_modules"]
@@ -40,6 +39,9 @@ def train(config: Dict):
           'Heels': 4, 
           'Dressing Shoe': 5,
           }
+
+        num_classes = config["num_classes"]
+
 
         # Load the dataset
         train = load_dataset(config["dataset_name"], split='train')
@@ -128,6 +130,6 @@ def train(config: Dict):
 
 
 if __name__ == "__main__":
-    config_path = "/content/shoe45k/configs/vit.yaml"  # Change to your desired config file
+    config_path = "/content/shoe45k/configs/blip.yaml"         #"/content/shoe45k/configs/vit.yaml"  # Change to your desired config file
     config = load_config(config_path)
     train(config)
