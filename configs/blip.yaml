@@ -1,7 +1,7 @@
 model_name: shoe-cap
 
 task: captioning
-model_checkpoint: Salesforce/blip2-opt-2.7b
+model_checkpoint: "Salesforce/blip-image-captioning-large"
 
 dataset_name: aidystark/shoeBlip
 

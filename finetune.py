@@ -6,10 +6,13 @@ from transformers import (
     Trainer, 
     AutoModelForImageClassification, 
     AutoImageProcessor,
-    AutoProcessor, 
+    BlipProcessor, 
     BlipForConditionalGeneration,
-    AdamW
+    AdamW,
 )
+
+
+
 from peft import LoraConfig, get_peft_model
 from data.dataset import Shoe45kDataset, BlipDataset
 from util import load_config, collate_fn_cls, blip_collate_fn, compute_metrics_cls
@@ -65,8 +68,8 @@ def train(config: Dict):
 
     elif task == "captioning":
 
-        model = BlipForConditionalGeneration.from_pretrained(model_checkpoint)
-        processor = AutoProcessor.from_pretrained(model_checkpoint)
+        processor = BlipProcessor.from_pretrained(model_checkpoint)
+        model = BlipForConditionalGeneration.from_pretrained(model_checkpoint).to("cuda")
 
         # Load the dataset
         hf_dataset = load_dataset(config["dataset_name"], split='train')
