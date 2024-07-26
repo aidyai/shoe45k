@@ -1,18 +1,10 @@
+import io
 import os
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
 
 from torchvision import transforms
-
-label_mapping = {
-    "Sneakers": 0,
-    "Boot": 1,
-    "Sandals": 2,
-    'Crocs': 3, 
-    'Heels': 4, 
-    'Dressing Shoe': 5,
-}
 
 class Shoe45kTransforms:
     def __init__(self, phase):
@@ -38,9 +30,10 @@ class Shoe45kTransforms:
 
 
 class Shoe45kDataset(Dataset):
-    def __init__(self, hf_dataset, phase):
-        self.dataset = hf_dataset
-        self.transform = Shoe45kTransforms(phase)
+    def __init__(self, dataset, phase: str, label_mapping: dict):
+        self.dataset = dataset
+        self.transforms = Shoe45kTransforms(phase)
+        self.label_mapping = label_mapping
 
     def __len__(self):
         return len(self.dataset)
@@ -48,16 +41,11 @@ class Shoe45kDataset(Dataset):
     def __getitem__(self, idx):
         item = self.dataset[idx]
         image_bytes = item['image']['bytes']
-        
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-        
         image = self.transforms(image)
-
         label = self.label_mapping[item['label']]
         label = torch.tensor(label).long()
-
-        return {"pixel_values": image, "label": label}
-
+        return {"pixel_values": image, "label": label, "file_name": item['file_name']}
 
 
 class BlipDataset(Dataset):
