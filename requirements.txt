@@ -2,3 +2,4 @@ ruamel.yaml
 wandb
 peft
 datasets
+bitsandbytes

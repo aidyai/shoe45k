@@ -6,20 +6,19 @@ from transformers import (
     Trainer, 
     AutoModelForImageClassification, 
     AutoImageProcessor,
-    Blip2Processor, 
+    AutoProcessor, 
     Blip2ForConditionalGeneration,
     AdamW,
 )
-
-
-
 from peft import LoraConfig, get_peft_model
 from data.dataset import Shoe45kDataset, BlipDataset
 from util import load_config, collate_fn_cls, blip_collate_fn, compute_metrics_cls
 from datasets import load_dataset
 
-def train(config: Dict):
-    task = config["task"]
+
+
+
+def train_classification(config: Dict):
     model_checkpoint = config["model_checkpoint"]
     wandb_name = config["wandb_name"]
     lora_r = config["lora_r"]
@@ -28,72 +27,39 @@ def train(config: Dict):
     lora_dropout = config["lora_dropout"]
     lora_bias = config["lora_bias"]
 
+    label_mapping = {
+        "Sneakers": 0,
+        "Boot": 1,
+        "Sandals": 2,
+        "Crocs": 3, 
+        "Heels": 4, 
+        "Dressing Shoe": 5,
+    }
 
-    if task == "classification":
+    # Load the dataset
+    train = load_dataset(config["dataset_name"], split='train')
+    val = load_dataset(config["dataset_name"], split='validation')
 
-        label_mapping = {
-          "Sneakers": 0,
-          "Boot": 1,
-          "Sandals": 2,
-          'Crocs': 3, 
-          'Heels': 4, 
-          'Dressing Shoe': 5,
-          }
+    model = AutoModelForImageClassification.from_pretrained(
+        pretrained_model_name_or_path=model_checkpoint,
+        num_labels=config["num_classes"],
+    )
 
-        num_classes = config["num_classes"]
+    # Create the custom dataset
+    train_dataset_cls = Shoe45kDataset(train, phase='train', label_mapping=label_mapping)
+    val_dataset_cls = Shoe45kDataset(val, phase='val', label_mapping=label_mapping)
 
-
-        # Load the dataset
-        train = load_dataset(config["dataset_name"], split='train')
-        val = load_dataset(config["dataset_name"], split='validation')
-
-        model = AutoModelForImageClassification.from_pretrained(
-            pretrained_model_name_or_path=model_checkpoint,
-            num_labels=num_classes,
-        )
-        #cls_processor = AutoImageProcessor.from_pretrained(model_checkpoint)
-
-        # Create the custom dataset
-        train_dataset_cls = Shoe45kDataset(train, phase='train', label_mapping=label_mapping)
-        val_dataset_cls = Shoe45kDataset(val, phase='val', label_mapping=label_mapping)
-
-        lora_config = LoraConfig(
-            r=lora_r,
-            lora_alpha=lora_alpha,
-            target_modules=lora_target_modules,
-            lora_dropout=lora_dropout,
-            bias=lora_bias,
-            modules_to_save=["classifier"],
-        )
-        compute_metrics = compute_metrics_cls
-        data_collator_cls = collate_fn_cls
-
-    elif task == "captioning":
-
-        processor = Blip2Processor.from_pretrained(model_checkpoint)
-        model = Blip2ForConditionalGeneration.from_pretrained(
-            model_checkpoint,
-            load_in_4bit=True, 
-            device_map="auto"            
-            )
-
-        # Load the dataset
-        hf_dataset = load_dataset(config["dataset_name"], split='train')
-
-        # Create the custom dataset
-        train_dataset_blip = BlipDataset(hf_dataset, processor)
-
-        lora_config = LoraConfig(
-            r=lora_r,
-            lora_alpha=lora_alpha,
-            target_modules=lora_target_modules,
-            lora_dropout=lora_dropout,
-            bias=lora_bias,
-        )
-        
-        data_collator = blip_collate_fn
-
-
+    lora_config = LoraConfig(
+        r=lora_r,
+        lora_alpha=lora_alpha,
+        target_modules=lora_target_modules,
+        lora_dropout=lora_dropout,
+        bias=lora_bias,
+        modules_to_save=["classifier"],
+    )
+    
+    compute_metrics = compute_metrics_cls
+    data_collator_cls = collate_fn_cls
 
     lora_model = get_peft_model(model, lora_config)
 
@@ -111,28 +77,59 @@ def train(config: Dict):
         logging_steps=config["training_args"]["logging_steps"],
         load_best_model_at_end=config["training_args"]["load_best_model_at_end"],
         push_to_hub=config["training_args"]["push_to_hub"],
-        label_names=config["training_args"]["label_names"] if task == "classification" else None,
+        label_names=config["training_args"]["label_names"],
         report_to=config["training_args"]["report_to"],
         run_name=wandb_name,
     )
 
-
     trainer = Trainer(
         model=lora_model,
         args=training_args,
-        train_dataset=train_dataset_cls if task == "classification" else train_dataset_blip,
-        eval_dataset=val_dataset_cls if task == "classification" else None,
-        tokenizer=None if task == "classification" else processor,
-        compute_metrics=compute_metrics if task == "classification" else None,
-        data_collator=data_collator_cls if task == "classification" else data_collator,
-        )
-
+        train_dataset=train_dataset_cls,
+        eval_dataset=val_dataset_cls,
+        compute_metrics=compute_metrics,
+        data_collator=data_collator_cls,
+    )
 
     train_results = trainer.train()
     return train_results
 
 
+def train_blip2_model(config):
+    
+    wandb.init(project=config["training_params"]["project"])
+
+    processor = AutoProcessor.from_pretrained(config["pretrained_model"])
+    train_dataset = BlipDataset(dataset, processor)
+    blip_dataloader = DataLoader(train_dataset, batch_size=config["training_params"]["batch_size"], shuffle=True)
+
+    model = TransformerModule(config)
+
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss")
+    trainer = Trainer(
+        max_epochs=config["training_params"]["max_epochs"],
+        logger=wandb.log,  # Log to W&B
+        callbacks=[checkpoint_callback],
+        accelerator=config["training_params"]["accelerator"],
+        devices=1,
+    )
+
+    trainer.fit(model, blip_dataloader)
+    model.push_to_hub(config["hub"])
+
+
+
+
+
+
 if __name__ == "__main__":
-    config_path = "/content/shoe45k/configs/blip.yaml"         #"/content/shoe45k/configs/vit.yaml"  # Change to your desired config file
-    config = load_config(config_path)
-    train(config)
+
+    if config["task"] == "classification":
+        config_path = "/content/shoe45k/configs/vit.yaml"  # Change to your desired config file
+        config = load_config(config_path)
+        train_classification(config)
+
+    elif config["task"] == "captioning":
+        config_path = "/content/shoe45k/configs/blip.yaml"  # Change to your desired config file
+        config = load_config(config_path)
+        train_blip2_model(config)

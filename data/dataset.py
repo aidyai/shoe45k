@@ -49,8 +49,8 @@ class Shoe45kDataset(Dataset):
 
 
 class BlipDataset(Dataset):
-    def __init__(self, hf_dataset, processor):
-        self.dataset = hf_dataset
+    def __init__(self, dataset, processor):
+        self.dataset = dataset
         self.processor = processor
 
     def __len__(self):
@@ -58,14 +58,12 @@ class BlipDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.dataset[idx]
-        image_path = item['image']
-        caption = item['caption']
-
-        # Load the image
-        image = PILImage.open(image_path).convert('RGB')
-
-        # Process the image and caption
-        encoding = self.processor(images=image, text=caption, padding="max_length", return_tensors="pt")
-        encoding = {k: v.squeeze() for k, v in encoding.items()}  # Remove batch dimension
-
+        image_bytes = item["image"]['bytes']
+        image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        item["image"] = image
+        encoding = self.processor(images=item["image"], padding="max_length", return_tensors="pt")
+        # remove batch dimension
+        encoding = {k: v.squeeze() for k, v in encoding.items()}
+        encoding["text"] = item["caption"]
         return encoding
+

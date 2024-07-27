@@ -1,0 +1,74 @@
+import torch
+from torch.optim import AdamW
+from pytorch_lightning.callbacks import ModelCheckpoint
+from transformers import AutoProcessor, Blip2ForConditionalGeneration
+from peft import LoraConfig, get_peft_model
+from transformers.modeling_utils import PyTorchModelHubMixin
+
+class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
+    def __init__(self, config):
+        super().__init__()
+        processor = AutoProcessor.from_pretrained(config["processor_checkpoint"])
+        model = Blip2ForConditionalGeneration.from_pretrained(
+            config["model_checkpoint"],
+            device_map="auto", 
+            load_in_4bit=True
+            )
+
+        lora_config = config["lora_config"]
+        peft_config = LoraConfig(
+            r=lora_config["r"],
+            lora_alpha=lora_config["lora_alpha"],
+            lora_dropout=lora_config["lora_dropout"],
+            bias=lora_config["bias"],
+            target_modules=lora_config["target_modules"]
+        )
+        self.model = get_peft_model(model, peft_config)
+        self.model.print_trainable_parameters()
+        self.processor = processor
+        self.lr = config["lr"]
+        self.save_hyperparameters("pretrained_model")
+
+    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, labels: torch.Tensor):
+        return self.model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels,
+        )
+
+    def training_step(self, batch, batch_idx):
+        outputs = self(
+            input_ids=batch["input_ids"],
+            attention_mask=batch["attention_mask"],
+            labels=batch["labels"],
+        )
+        loss = outputs["loss"]
+        self.log("train_loss", loss, on_epoch=True, on_step=False)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        outputs = self(
+            input_ids=batch["input_ids"],
+            attention_mask=batch["attention_mask"],
+            labels=batch["labels"],
+        )
+        loss = outputs["loss"]
+        self.log("val_loss", loss, on_epoch=True, on_step=False)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        outputs = self(
+            input_ids=batch["input_ids"],
+            attention_mask=batch["attention_mask"],
+            labels=batch["labels"],
+        )
+        loss = outputs["loss"]
+        self.log("test_loss", loss)
+        return loss
+
+    def configure_optimizers(self):
+        return AdamW(
+            params=self.parameters(),
+            lr=self.lr,
+            weight_decay=config["weight_decay"],
+        )
