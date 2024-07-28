@@ -58,12 +58,13 @@ class BlipDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.dataset[idx]
+
         image_bytes = item["image"]['bytes']
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         item["image"] = image
-        encoding = self.processor(images=item["image"], padding="max_length", return_tensors="pt")
-        # remove batch dimension
-        encoding = {k: v.squeeze() for k, v in encoding.items()}
-        encoding["text"] = item["caption"]
-        return encoding
 
+        # Remove batch dimension
+        encodings = self.processor(images=item["image"], text=item["caption"], padding="max_length", return_tensors="pt")
+        encodings = {k: v.squeeze() for k, v in encodings.items()}
+
+        return encodings
