@@ -3,7 +3,11 @@ from torch.optim import AdamW
 from pytorch_lightning.callbacks import ModelCheckpoint
 from transformers import AutoProcessor, Blip2ForConditionalGeneration
 from peft import LoraConfig, get_peft_model
-from transformers.modeling_utils import PyTorchModelHubMixin
+
+from huggingface_hub import PyTorchModelHubMixin
+from pytorch_lightning.core import LightningModule
+
+
 
 class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
     def __init__(self, config):
@@ -27,8 +31,9 @@ class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
         self.model.print_trainable_parameters()
         self.processor = processor
         self.lr = config["lr"]
-        self.save_hyperparameters("pretrained_model")
-
+        self.weight_decay = config["weight_decay"]
+    
+    
     def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, labels: torch.Tensor):
         return self.model(
             input_ids=input_ids,
@@ -56,19 +61,11 @@ class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
         self.log("val_loss", loss, on_epoch=True, on_step=False)
         return loss
 
-    def test_step(self, batch, batch_idx):
-        outputs = self(
-            input_ids=batch["input_ids"],
-            attention_mask=batch["attention_mask"],
-            labels=batch["labels"],
-        )
-        loss = outputs["loss"]
-        self.log("test_loss", loss)
-        return loss
+
 
     def configure_optimizers(self):
         return AdamW(
             params=self.parameters(),
             lr=self.lr,
-            weight_decay=config["weight_decay"],
+            weight_decay=self.weight_decay,
         )

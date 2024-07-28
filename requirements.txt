@@ -3,3 +3,4 @@ wandb
 peft
 datasets
 bitsandbytes
+pytorch_lightning

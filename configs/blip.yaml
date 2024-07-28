@@ -2,7 +2,13 @@ model_checkpoint: ybelkada/blip2-opt-2.7b-fp16-sharded
 processor_checkpoint: "Salesforce/blip2-opt-2.7b"
 
 dataset_name: aidystark/shoeBlip
+
+
 wandb_name: captioning_project
+project: q_shoe
+job_type: train
+
+
 
 hub: q_shoe
 pretrained_model: "Salesforce/blip2-opt-2.7b"

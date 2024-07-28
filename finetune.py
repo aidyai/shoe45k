@@ -11,9 +11,15 @@ from transformers import (
     AdamW,
 )
 from peft import LoraConfig, get_peft_model
+from model.blip import BlipTransformerModule
 from data.dataset import Shoe45kDataset, BlipDataset
 from util import load_config, collate_fn_cls, blip_collate_fn, compute_metrics_cls
 from datasets import load_dataset
+import wandb
+from torch.utils.data import DataLoader
+from pytorch_lightning import LightningModule, Trainer as PLTrainer
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
 
 
 
@@ -58,7 +64,7 @@ def train_classification(config: Dict):
         modules_to_save=["classifier"],
     )
     
-    compute_metrics = compute_metrics_cls
+    #compute_metrics = compute_metrics_cls
     data_collator_cls = collate_fn_cls
 
     lora_model = get_peft_model(model, lora_config)
@@ -87,7 +93,7 @@ def train_classification(config: Dict):
         args=training_args,
         train_dataset=train_dataset_cls,
         eval_dataset=val_dataset_cls,
-        compute_metrics=compute_metrics,
+        compute_metrics=compute_metrics_cls,
         data_collator=data_collator_cls,
     )
 
@@ -99,16 +105,27 @@ def train_blip2_model(config):
     
     wandb.init(project=config["training_params"]["project"])
 
+
+    blip_dataset = load_dataset(config["dataset_name"], split='train')
+
     processor = AutoProcessor.from_pretrained(config["pretrained_model"])
-    train_dataset = BlipDataset(dataset, processor)
+    train_dataset = BlipDataset(blip_dataset, processor)
     blip_dataloader = DataLoader(train_dataset, batch_size=config["training_params"]["batch_size"], shuffle=True)
 
-    model = TransformerModule(config)
+    model = BlipTransformerModule(config)
+
+
+    wandb_logger = WandbLogger(
+        project=config['project'],
+        job_type=config['job_type'],
+        config=config,
+        log_model="all"
+      )
 
     checkpoint_callback = ModelCheckpoint(monitor="val_loss")
-    trainer = Trainer(
+    trainer = PLTrainer(
         max_epochs=config["training_params"]["max_epochs"],
-        logger=wandb.log,  # Log to W&B
+        logger=wandb_logger,  # Log to W&B
         callbacks=[checkpoint_callback],
         accelerator=config["training_params"]["accelerator"],
         devices=1,
@@ -124,12 +141,17 @@ def train_blip2_model(config):
 
 if __name__ == "__main__":
 
-    if config["task"] == "classification":
+    # task = "classification"  #"captioning"
+    task = "captioning"
+
+
+    if task == "classification":
         config_path = "/content/shoe45k/configs/vit.yaml"  # Change to your desired config file
         config = load_config(config_path)
         train_classification(config)
 
-    elif config["task"] == "captioning":
+    elif task == "captioning":
         config_path = "/content/shoe45k/configs/blip.yaml"  # Change to your desired config file
         config = load_config(config_path)
         train_blip2_model(config)
+
