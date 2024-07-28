@@ -49,10 +49,10 @@ class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
             labels=batch["input_ids"],
         )
         loss = outputs["loss"]
-        self.log_dict({'train_loss': loss }) #, prog_bar=True, on_epoch=True})
+        if torch.isnan(loss):
+            print("NaN loss detected during training")
+        self.log('train_loss', loss, prog_bar=True, on_step=False, on_epoch=True)
         return loss
-
-
 
     def validation_step(self, batch, batch_idx):
         outputs = self(
@@ -60,11 +60,12 @@ class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
             pixel_values=batch["pixel_values"],
             attention_mask=batch["attention_mask"],
             labels=batch["input_ids"],
-        )
+          )
         loss = outputs["loss"]
-        self.log_dict({'val_loss', loss }) #, prog_bar=True, on_step=False, on_epoch=True})
+        if torch.isnan(loss):
+            print("NaN loss detected during validation")
+        self.log('val_loss', loss, prog_bar=True, on_step=False, on_epoch=True)
         return loss
-
 
     def configure_optimizers(self):
         return AdamW(

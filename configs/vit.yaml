@@ -3,6 +3,7 @@ model_name: shoe45k
 
 dataset_name: aidystark/shoe45k
 
+project: qblip
 task: classification
 model_checkpoint: google/vit-base-patch16-224-in21k
 wandb_name: classification_project

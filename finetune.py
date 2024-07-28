@@ -25,6 +25,8 @@ from pytorch_lightning.loggers import WandbLogger
 
 
 def train_classification(config: Dict):
+
+    wandb.init(project=config["project"])
     model_checkpoint = config["model_checkpoint"]
     wandb_name = config["wandb_name"]
     lora_r = config["lora_r"]

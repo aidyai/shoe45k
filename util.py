@@ -33,18 +33,18 @@ def blip_collate_fn(batch):
     return processed_batch
 
 
-def compute_metrics_cls(pred):
-    labels = pred.label_ids
-    preds = pred.predictions.argmax(-1)
+def compute_metrics_cls(eval_pred):
+
     
-    accuracy = accuracy_score(labels, preds)
-    precision = precision_score(labels, preds, average='weighted')
-    recall = recall_score(labels, preds, average='weighted')
-    f1 = f1_score(labels, preds, average='weighted')
+    metric1 = load("precision")
+    metric2 = load("recall")
     
-    return {
-        'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1': f1
-    }
+    logits, labels = eval_pred
+    predictions = np.argmax(logits, axis=-1)
+
+    predictions = predictions.flatten() if len(predictions.shape) > 1 else predictions
+    labels = labels.flatten() if len(labels.shape) > 1 else labels
+
+    precision = metric1.compute(predictions=predictions, references=labels)["precision"]
+    recall = metric2.compute(predictions=predictions, references=labels)["recall"]
+    return {"precision": precision, "recall": recall}
