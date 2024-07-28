@@ -49,7 +49,7 @@ class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
             labels=batch["input_ids"],
         )
         loss = outputs["loss"]
-        self.log_dict({'train_loss': loss, prog_bar=True, on_epoch=True})
+        self.log_dict({'train_loss': loss }) #, prog_bar=True, on_epoch=True})
         return loss
 
 
@@ -62,7 +62,7 @@ class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
             labels=batch["input_ids"],
         )
         loss = outputs["loss"]
-        self.log_dict({'val_loss', loss, prog_bar=True, on_step=False, on_epoch=True})
+        self.log_dict({'val_loss', loss }) #, prog_bar=True, on_step=False, on_epoch=True})
         return loss
 
 
