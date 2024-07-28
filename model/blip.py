@@ -17,7 +17,7 @@ class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
             config["model_checkpoint"],
             device_map="auto", 
             load_in_4bit=True
-            )
+        )
 
         lora_config = config["lora_config"]
         peft_config = LoraConfig(
@@ -33,10 +33,10 @@ class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
         self.lr = config["lr"]
         self.weight_decay = config["weight_decay"]
     
-    
-    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, labels: torch.Tensor):
+    def forward(self, input_ids: torch.Tensor, pixel_values: torch.Tensor, attention_mask: torch.Tensor, labels: torch.Tensor):
         return self.model(
             input_ids=input_ids,
+            pixel_values=pixel_values,
             attention_mask=attention_mask,
             labels=labels,
         )
@@ -44,23 +44,26 @@ class BlipTransformerModule(LightningModule, PyTorchModelHubMixin):
     def training_step(self, batch, batch_idx):
         outputs = self(
             input_ids=batch["input_ids"],
+            pixel_values=batch["pixel_values"],
             attention_mask=batch["attention_mask"],
-            labels=batch["labels"],
+            labels=batch["input_ids"],
         )
         loss = outputs["loss"]
-        self.log("train_loss", loss, on_epoch=True, on_step=False)
+        self.log_dict({'train_loss': loss, prog_bar=True, on_epoch=True})
         return loss
+
+
 
     def validation_step(self, batch, batch_idx):
         outputs = self(
             input_ids=batch["input_ids"],
+            pixel_values=batch["pixel_values"],
             attention_mask=batch["attention_mask"],
-            labels=batch["labels"],
+            labels=batch["input_ids"],
         )
         loss = outputs["loss"]
-        self.log("val_loss", loss, on_epoch=True, on_step=False)
+        self.log_dict({'val_loss', loss, prog_bar=True, on_step=False, on_epoch=True})
         return loss
-
 
 
     def configure_optimizers(self):
