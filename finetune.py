@@ -85,7 +85,7 @@ def train_classification(config: Dict):
         logging_steps=config["training_args"]["logging_steps"],
         load_best_model_at_end=config["training_args"]["load_best_model_at_end"],
         push_to_hub=config["training_args"]["push_to_hub"],
-        label_names=config["training_args"]["label_names"],
+        label_names=["label_names"],
         report_to=config["training_args"]["report_to"],
         run_name=wandb_name,
     )

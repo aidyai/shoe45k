@@ -29,13 +29,6 @@ training_args:
   logging_steps: 10
   load_best_model_at_end: true
   metric_for_best_model: accuracy
-  push_to_hub: True
-  label_names:
-    - Sneakers
-    - Boot
-    - Sandals
-    - Crocs
-    - Heels
-    - Dressing Shoe       
+  push_to_hub: True   
   report_to: wandb
   run_name: classification_project
