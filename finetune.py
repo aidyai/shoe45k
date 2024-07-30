@@ -13,7 +13,7 @@ from transformers import (
 from peft import LoraConfig, get_peft_model
 from model.blip import BlipTransformerModule
 from data.dataset import Shoe45kDataset, BlipDataset
-from util import load_config, collate_fn_cls, blip_collate_fn, compute_metrics_cls
+from util import load_config, collate_fn_cls, compute_metrics_cls
 from datasets import load_dataset
 import wandb
 from torch.utils.data import DataLoader
