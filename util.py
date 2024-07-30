@@ -2,7 +2,8 @@ from typing import Dict
 import torch
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import ruamel.yaml as yaml
-
+import numpy as np
+import evaluate
 
 
 def load_config(config_path: str) -> Dict:
@@ -13,32 +14,21 @@ def load_config(config_path: str) -> Dict:
 
 def collate_fn_cls(examples):
     pixel_values = torch.stack([example["pixel_values"] for example in examples])
-    labels = torch.tensor([example["label"] for example in examples])
+    labels = torch.tensor([example["labels"] for example in examples]) 
     return {"pixel_values": pixel_values, "labels": labels}
 
 
 
-# def blip_collate_fn(batch):
-#     # pad the input_ids and attention_mask
-#     processed_batch = {}
-#     for key in batch[0].keys():
-#         if key != "text":
-#             processed_batch[key] = torch.stack([example[key] for example in batch])
-#         else:
-#             text_inputs = processor.tokenizer(
-#                 [example["text"] for example in batch], padding=True, return_tensors="pt"
-#             )
-#             processed_batch["input_ids"] = text_inputs["input_ids"]
-#             processed_batch["attention_mask"] = text_inputs["attention_mask"]
-#     return processed_batch
-
 def compute_metrics_cls(eval_pred):
-    
-    metric1 = load_metric("precision")
-    metric2 = load_metric("recall")
-    
+    metric_precision = evaluate.load("precision")
+    metric_recall = evaluate.load("recall")
+    metric_accuracy = evaluate.load("accuracy")
+
     logits, labels = eval_pred
     predictions = np.argmax(logits, axis=-1)
-    precision = metric1.compute(predictions=predictions, references=labels)["precision"]
-    recall = metric2.compute(predictions=predictions, references=labels)["recall"]
-    return {"precision": precision, "recall": recall}
+    
+    precision = metric_precision.compute(predictions=predictions, references=labels, average='macro')["precision"]
+    recall = metric_recall.compute(predictions=predictions, references=labels, average='macro')["recall"]
+    accuracy = metric_accuracy.compute(predictions=predictions, references=labels)["accuracy"]
+
+    return {"precision": precision, "recall": recall, "accuracy": accuracy}
