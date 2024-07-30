@@ -45,7 +45,7 @@ class Shoe45kDataset(Dataset):
         image = self.transforms(image)
         label = self.label_mapping[item['label']]
         label = torch.tensor(label).long()
-        return {"pixel_values": image, "label": label, "file_name": item['file_name']}
+        return {"pixel_values": image, "labels": label, "file_name": item['file_name']}
 
 
 class BlipDataset(Dataset):

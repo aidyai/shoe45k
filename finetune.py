@@ -85,7 +85,7 @@ def train_classification(config: Dict):
         logging_steps=config["training_args"]["logging_steps"],
         load_best_model_at_end=config["training_args"]["load_best_model_at_end"],
         push_to_hub=config["training_args"]["push_to_hub"],
-        label_names=["label_names"],
+        label_names=["labels"],
         report_to=config["training_args"]["report_to"],
         run_name=wandb_name,
     )
@@ -101,6 +101,9 @@ def train_classification(config: Dict):
 
     train_results = trainer.train()
     return train_results
+
+    repo_name = config["model_name"]
+    lora_model.push_to_hub(repo_name)
 
 
 def train_blip2_model(config):

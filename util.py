@@ -18,33 +18,27 @@ def collate_fn_cls(examples):
 
 
 
-def blip_collate_fn(batch):
-    # pad the input_ids and attention_mask
-    processed_batch = {}
-    for key in batch[0].keys():
-        if key != "text":
-            processed_batch[key] = torch.stack([example[key] for example in batch])
-        else:
-            text_inputs = processor.tokenizer(
-                [example["text"] for example in batch], padding=True, return_tensors="pt"
-            )
-            processed_batch["input_ids"] = text_inputs["input_ids"]
-            processed_batch["attention_mask"] = text_inputs["attention_mask"]
-    return processed_batch
-
+# def blip_collate_fn(batch):
+#     # pad the input_ids and attention_mask
+#     processed_batch = {}
+#     for key in batch[0].keys():
+#         if key != "text":
+#             processed_batch[key] = torch.stack([example[key] for example in batch])
+#         else:
+#             text_inputs = processor.tokenizer(
+#                 [example["text"] for example in batch], padding=True, return_tensors="pt"
+#             )
+#             processed_batch["input_ids"] = text_inputs["input_ids"]
+#             processed_batch["attention_mask"] = text_inputs["attention_mask"]
+#     return processed_batch
 
 def compute_metrics_cls(eval_pred):
-
     
-    metric1 = load("precision")
-    metric2 = load("recall")
+    metric1 = load_metric("precision")
+    metric2 = load_metric("recall")
     
     logits, labels = eval_pred
     predictions = np.argmax(logits, axis=-1)
-
-    predictions = predictions.flatten() if len(predictions.shape) > 1 else predictions
-    labels = labels.flatten() if len(labels.shape) > 1 else labels
-
     precision = metric1.compute(predictions=predictions, references=labels)["precision"]
     recall = metric2.compute(predictions=predictions, references=labels)["recall"]
     return {"precision": precision, "recall": recall}
